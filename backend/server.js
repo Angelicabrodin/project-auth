@@ -27,23 +27,28 @@ const User = mongoose.model('User', {
   }
 })
 
-
-const authenticateUser = async (req, res, next) => {
-  const user = await User.findOne({ accessToken: req.header('Authorization') })
-  if (user) {
-    req.user = user
-    next()
-  } else {
-    res.status(401).json({ loggedOut: true })
-  }
-}
-
 const port = process.env.PORT || 8080
 const app = express()
 
 // Add middlewares to enable cors and json body parsing
 app.use(cors())
 app.use(bodyParser.json())
+
+const authenticateUser = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ accessToken: req.header('Authorization') })
+    if (user) {
+      req.user = user
+      next()
+    } else {
+      res.status(401).json({ loggedOut: true, message: "Please try logging in again" })
+    }
+  } catch (err) {
+    res
+      .status(403)
+      .json({ message: 'access token missing or wrong', errors: err.errors })
+  }
+}
 
 // Start defining your routes here
 app.get('/', (req, res) => {
@@ -54,8 +59,8 @@ app.post('/users', async (req, res) => {
   try {
     const { username, password } = req.body
     const user = new User({ username, password: bcrypt.hashSync(password) })
-    user.save()
-    res.status(201).json({ id: user._id, accessToken: user.accessToken })
+    const saved = await user.save()
+    res.status(201).json(saved)
   } catch (err) {
     res.status(400).json({ message: 'Could not create user! Are you sure you are a wizard?', errors: err.errors })
   }
@@ -63,16 +68,24 @@ app.post('/users', async (req, res) => {
 
 app.get('/spells', authenticateUser)
 app.get('/spells', (req, res) => {
-  res.json({ spell: 'secret spell' })
+  try {
+    res.status(201).json(req.user)
+  } catch (err) {
+    res.status(400).json({ message: 'could not save user', errors: err.errors })
+  }
 })
 
 
 app.post('/login', async (req, res) => {
-  const user = await User.findOne({ username: req.body.username })
-  if (user && bcrypt.compareSync(req.body.password, user.password)) {
-    res.json({ userId: user._id, accessToken: user.accessToken })
-  } else {
-    res.json({ notFound: true })
+  try {
+    const user = await User.findOne({ username: req.body.username })
+    if (user && bcrypt.compareSync(req.body.password, user.password)) {
+      res.status(201).json({ userId: user._id, accessToken: user.accessToken })
+    } else {
+      res.json({ notFound: true })
+    }
+  } catch (err) {
+    res.status(400).json({ message: 'could not find user', errors: err.errors })
   }
 })
 

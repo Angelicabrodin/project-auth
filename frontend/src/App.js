@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
 
+
 // La till en ny component 
 import { Login } from './Login'
 
-const URL = 'https://harry-potter-auth.herokuapp.com/users'
+//const URL = 'https://harry-potter-auth.herokuapp.com/users'
+
+const URL = 'http://localhost:8080/users'
+
 
 export const App = () => {
   const [username, setUsername] = useState('')
@@ -18,7 +22,10 @@ export const App = () => {
       headers: { 'Content-Type': 'application/json' }
     })
       .then(res => res.json())
-      .then(json => console.log(json))
+      .then((json) => {
+        setUsername('')
+        setPassword('')
+      })
       .catch(err => console.log('error:', err))
   }
 
